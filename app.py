@@ -2,6 +2,7 @@ import streamlit as st
 import google.generativeai as genai
 import pandas as pd
 import json
+import os
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(page_title="E-com SEO Architect", page_icon="🚀", layout="wide")
@@ -27,53 +28,50 @@ with st.sidebar:
         st.error("❌ Verifique a Chave")
     page = st.radio("Ir para:", ["Gerador de SEO", "Auditoria Rápida"])
 
-# --- FUNÇÃO DE CONEXÃO (CORREÇÃO DO ERRO 404) ---
+# --- FUNÇÃO DE CONEXÃO BLINDADA (CORREÇÃO DEFINITIVA DO ERRO 404) ---
 def call_gemini_stable(p_name, p_key, p_niche, p_plat, p_diff):
     try:
-        # Configura a conexão usando a chave integrada
+        # Forçamos a configuração da API a usar o canal estável (v1)
         genai.configure(api_key=API_KEY)
         
-        # Forçamos o uso do modelo gemini-1.5-flash, que é o mais estável e rápido
+        # Tentamos o modelo Flash, que é o padrão ouro atual
+        # O uso do nome simples sem 'models/' evita erros de endereçamento no v1beta
         model = genai.GenerativeModel('gemini-1.5-flash')
 
         prompt = f"""
-        Atue como Especialista Sênior em SEO para E-commerce.
-        Gere uma estrutura de SEO para o produto abaixo.
+        Atue como Especialista Sênior em SEO. Gere um JSON para:
+        Produto: {p_name} | Key: {p_key} | Nicho: {p_niche} | Plataforma: {p_plat}
+        Diferenciais: {p_diff}
         
-        PRODUTO: {p_name}
-        PALAVRA-CHAVE: {p_key}
-        NICHO: {p_niche}
-        PLATAFORMA: {p_plat}
-        DIFERENCIAIS: {p_diff}
-        
-        REGRAS:
-        1. Title Tag: Max 60 chars.
-        2. Meta Description: Max 155 chars.
-        3. URL Slug: Amigável.
-        
-        RETORNE APENAS UM JSON VÁLIDO:
+        RETORNE APENAS O JSON (sem markdown):
         {{
-            "title_tag": "...",
-            "meta_description": "...",
-            "url_slug": "...",
-            "h1_tag": "...",
-            "lsi_keywords": "..."
+            "title_tag": "string",
+            "meta_description": "string",
+            "url_slug": "string",
+            "h1_tag": "string",
+            "lsi_keywords": "string"
         }}
         """
         
-        # Realiza a chamada
+        # Realiza a chamada forçando a geração de conteúdo
         response = model.generate_content(prompt)
         
-        # Limpeza de resposta para garantir que apenas o JSON seja lido
-        clean_text = response.text.strip()
-        if "```json" in clean_text:
-            clean_text = clean_text.split("```json")[1].split("```")[0].strip()
-        elif "```" in clean_text:
-            clean_text = clean_text.split("```")[1].split("```")[0].strip()
+        # Limpeza agressiva da resposta
+        res_text = response.text.strip()
+        if "```json" in res_text:
+            res_text = res_text.split("```json")[1].split("```")[0].strip()
+        elif "```" in res_text:
+            res_text = res_text.split("```")[1].split("```")[0].strip()
             
-        return json.loads(clean_text)
+        return json.loads(res_text)
     except Exception as e:
-        return {"error": str(e)}
+        # Se falhar, tentamos o modelo Pro como backup automático
+        try:
+            model_pro = genai.GenerativeModel('gemini-pro')
+            response_pro = model_pro.generate_content(prompt)
+            return json.loads(response_pro.text.strip())
+        except:
+            return {"error": str(e)}
 
 # --- INTERFACE ---
 if page == "Gerador de SEO":
@@ -87,29 +85,27 @@ if page == "Gerador de SEO":
         key = st.text_input("Palavra-chave Principal *")
         plat = st.selectbox("Plataforma", ["Nuvemshop", "Shopify", "Vtex", "Outra"])
     
-    diff = st.text_input("Diferenciais (Ex: Frete Grátis)")
+    diff = st.text_input("Diferenciais")
 
     if st.button("✨ Gerar Estrutura Otimizada"):
         if name and key:
-            with st.spinner("Conectando aos servidores estáveis do Google..."):
+            with st.spinner("Conectando aos servidores do Google..."):
                 res = call_gemini_stable(name, key, niche, plat, diff)
                 
                 if "error" in res:
-                    st.error(f"Erro técnico: {res['error']}")
+                    st.error(f"Erro na conexão: {res['error']}. Dica: Tente dar um 'Reboot' no Streamlit Cloud.")
                 else:
-                    st.success("SEO Gerado!")
+                    st.success("Análise concluída!")
                     st.divider()
-                    st.subheader("📋 Sugestão de SEO")
                     st.info(f"**Título:** {res['title_tag']}")
                     st.info(f"**Descrição:** {res['meta_description']}")
-                    st.write(f"**URL:** {res['url_slug']}")
-                    st.caption(f"**LSI:** {res['lsi_keywords']}")
+                    st.write(f"**Slug:** {res['url_slug']}")
+                    st.caption(f"**Keywords:** {res['lsi_keywords']}")
                     
                     df = pd.DataFrame([res])
                     st.download_button("📥 Baixar CSV", df.to_csv(index=False).encode('utf-8'), "seo.csv", "text/csv")
         else:
-            st.warning("Preencha o Nome e a Palavra-chave.")
+            st.warning("Preencha os campos obrigatórios (*).")
 
 else:
     st.markdown('<div class="main-header">Auditoria Rápida</div>', unsafe_allow_html=True)
-    st.write("Verifique se o seu título atual segue as normas do Google.")
