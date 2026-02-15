@@ -7,151 +7,101 @@ import json
 st.set_page_config(
     page_title="E-com SEO Architect",
     page_icon="🚀",
-    layout="wide",
-    initial_sidebar_state="expanded"
+    layout="wide"
 )
 
-# --- INTEGRAÇÃO DA CHAVE DE API ---
-# Chave integrada conforme solicitado
-API_KEY_INTEGRADA = "AIzaSyDlXoCn3GLsgYgmRMxhiU702oxD4EEWuYY"
+# --- CHAVE DE API INTEGRADA ---
+API_KEY = "AIzaSyDlXoCn3GLsgYgmRMxhiU702oxD4EEWuYY"
 
-# --- ESTILIZAÇÃO CSS (Layout Profissional) ---
+# --- ESTILIZAÇÃO ---
 st.markdown("""
 <style>
-    .stButton>button {
-        width: 100%;
-        background-color: #4F46E5;
-        color: white;
-        border-radius: 8px;
-        height: 3em;
-        font-weight: bold;
-    }
-    .main-header {
-        font-size: 2.5rem;
-        color: #4F46E5;
-        font-weight: 700;
-        margin-bottom: 20px;
-    }
+    .stButton>button { width: 100%; background-color: #4F46E5; color: white; font-weight: bold; }
+    .main-header { font-size: 2.5rem; color: #4F46E5; font-weight: 700; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- BARRA LATERAL (SIDEBAR) ---
+# --- SIDEBAR ---
 with st.sidebar:
-    st.image("https://cdn-icons-png.flaticon.com/512/1006/1006771.png", width=50)
     st.title("E-com SEO Architect")
     st.markdown("---")
-    
-    # Validação visual da conexão
-    if API_KEY_INTEGRADA.startswith("AIza"):
+    if API_KEY.startswith("AIza"):
         st.success("✅ API Gemini Conectada")
     else:
-        st.error("❌ Erro na Chave de API")
-    
-    st.markdown("### Navegação")
-    page = st.radio("Ir para:", ["Gerador de Estrutura", "Auditoria de URL"])
+        st.error("❌ Verifique sua Chave")
+    page = st.radio("Navegação:", ["Gerador de SEO", "Auditoria"])
 
-# --- FUNÇÃO DE INTELIGÊNCIA (CORREÇÃO DO ERRO 404) ---
-def generate_seo_logic(product, keyword, niche, platform, differentials):
+# --- FUNÇÃO DO MOTOR DE IA (CORREÇÃO DE ERRO 404) ---
+def call_gemini_api(p_name, p_key, p_niche, p_plat, p_diff):
     try:
-        # Configura a conexão com a chave integrada
-        genai.configure(api_key=API_KEY_INTEGRADA)
+        genai.configure(api_key=API_KEY)
         
-        # Uso do modelo gemini-1.5-flash (Versão mais estável para produção)
-        model = genai.GenerativeModel('gemini-1.5-flash')
-        
+        # Tenta o modelo 1.5-flash primeiro, se falhar tenta o pro
+        try:
+            model = genai.GenerativeModel('gemini-1.5-flash')
+            # Teste simples de conexão
+            model.count_tokens("teste") 
+        except:
+            model = genai.GenerativeModel('gemini-pro')
+
         prompt = f"""
-        Você é um Especialista Sênior em SEO para E-commerce. 
-        Analise o produto abaixo e gere uma estratégia de SEO profissional.
-
-        DADOS:
-        - Nome do Produto: {product}
-        - Palavra-chave: {keyword}
-        - Nicho: {niche}
-        - Plataforma: {platform}
-        - Diferenciais: {differentials}
-
-        REGRAS TÉCNICAS:
-        1. Title Tag: Max 60 caracteres. Use Title Case.
-        2. Meta Description: Max 155 caracteres. Use gatilhos mentais.
-        3. URL Slug: Otimizada para {platform}.
-        4. LSI Keywords: 5 termos técnicos.
-
-        RETORNE APENAS UM JSON PURO NESTE FORMATO:
-        {{
-            "title_tag": "string",
-            "meta_description": "string",
-            "url_slug": "string",
-            "h1_tag": "string",
-            "lsi_keywords": "string"
-        }}
+        Atue como Especialista em SEO. Gere um JSON para:
+        Produto: {p_name} | Palavra-chave: {p_key} | Nicho: {p_niche} | Plataforma: {p_plat} | Diferenciais: {p_diff}
+        
+        Retorne APENAS um JSON com as chaves: title_tag, meta_description, url_slug, h1_tag, lsi_keywords.
         """
         
-        # Envia a requisição para o Google
         response = model.generate_content(prompt)
         
-        # Limpeza robusta para garantir a leitura do JSON
-        json_text = response.text.strip()
-        if "```json" in json_text:
-            json_text = json_text.split("```json")[1].split("```")[0].strip()
-        elif "```" in json_text:
-            json_text = json_text.split("```")[1].split("```")[0].strip()
+        # Limpeza de resposta para evitar erros de formatação
+        text_response = response.text.strip()
+        if "```json" in text_response:
+            text_response = text_response.split("```json")[1].split("```")[0].strip()
+        elif "```" in text_response:
+            text_response = text_response.split("```")[1].split("```")[0].strip()
             
-        return json.loads(json_text)
-    
+        return json.loads(text_response)
     except Exception as e:
-        # Retorna o erro detalhado se algo falhar
         return {"error": str(e)}
 
-# --- INTERFACE: GERADOR ---
-if page == "Gerador de Estrutura":
+# --- INTERFACE ---
+if page == "Gerador de SEO":
     st.markdown('<div class="main-header">Gerador de Estrutura SEO</div>', unsafe_allow_html=True)
     
     col1, col2 = st.columns(2)
     with col1:
-        p_name = st.text_input("Nome do Produto/Categoria *")
-        p_niche = st.selectbox("Nicho de Mercado", ["Automação Industrial", "Eletrônicos", "Moda", "Outros"])
+        name = st.text_input("Nome do Produto *")
+        niche = st.selectbox("Nicho", ["Automação Industrial", "Eletrônicos", "Moda", "Outros"])
     with col2:
-        p_key = st.text_input("Palavra-chave Principal *")
-        p_plat = st.selectbox("Plataforma da Loja", ["Nuvemshop", "Shopify", "Vtex", "Outra"])
+        key = st.text_input("Palavra-chave Principal *")
+        plat = st.selectbox("Plataforma", ["Nuvemshop", "Shopify", "Vtex", "Outra"])
     
-    p_diff = st.text_input("Diferenciais Competitivos")
+    diff = st.text_input("Diferenciais")
 
-    if st.button("✨ Gerar Estrutura Otimizada"):
-        if not p_name or not p_key:
-            st.warning("Os campos Nome e Palavra-chave são obrigatórios.")
-        else:
-            with st.spinner("Analisando dados com a inteligência do Google..."):
-                result = generate_seo_logic(p_name, p_key, p_niche, p_plat, p_diff)
-                
-                if "error" in result:
-                    st.error(f"Erro na Análise: {result['error']}")
+    if st.button("✨ Gerar SEO"):
+        if name and key:
+            with st.spinner("Analisando..."):
+                res = call_gemini_api(name, key, niche, plat, diff)
+                if "error" in res:
+                    st.error(f"Erro na análise: {res['error']}")
                 else:
-                    st.success("SEO Otimizado Gerado!")
+                    st.success("Gerado!")
                     st.divider()
+                    st.subheader("📋 Sugestões")
+                    st.info(f"**Título:** {res['title_tag']}")
+                    st.info(f"**Descrição:** {res['meta_description']}")
+                    st.write(f"**Slug:** {res['url_slug']}")
+                    st.write(f"**Keywords:** {res['lsi_keywords']}")
                     
-                    st.subheader("📋 Resultados Sugeridos")
-                    st.info(f"**Título:** {result['title_tag']}")
-                    st.info(f"**Descrição:** {result['meta_description']}")
-                    st.write(f"**URL Slug:** `{result['url_slug']}`")
-                    st.write(f"**H1:** {result['h1_tag']}")
-                    st.caption(f"**Termos LSI:** {result['lsi_keywords']}")
-                    
-                    # Funcionalidade de download
-                    df_out = pd.DataFrame([result])
-                    st.download_button("📥 Exportar CSV", df_out.to_csv(index=False).encode('utf-8'), "seo.csv", "text/csv")
+                    df = pd.DataFrame([res])
+                    st.download_button("📥 Baixar CSV", df.to_csv(index=False).encode('utf-8'), "seo.csv", "text/csv")
+        else:
+            st.warning("Preencha os campos obrigatórios.")
 
-# --- INTERFACE: AUDITORIA ---
 else:
-    st.markdown('<div class="main-header">Auditoria de URL</div>', unsafe_allow_html=True)
-    t_audit = st.text_input("Insira o Título atual para análise")
-    
-    if st.button("🔍 Iniciar Auditoria"):
-        if t_audit:
-            score = 100
-            if len(t_audit) > 60: score -= 20
-            if t_audit.isupper(): score -= 30
-            st.metric("Nota de Saúde SEO", f"{score}/100")
-            if score < 100:
-                st.warning("Dica: Evite títulos muito longos ou totalmente em maiúsculas.")
-            else:
-                st.success("Seu título está seguindo as boas práticas!")
+    st.markdown('<div class="main-header">Auditoria</div>', unsafe_allow_html=True)
+    title = st.text_input("Título Atual")
+    if st.button("🔍 Analisar"):
+        score = 100
+        if len(title) > 60: score -= 20
+        st.metric("Nota SEO", f"{score}/100")
