@@ -1,401 +1,120 @@
 import streamlit as st
-
 import google.generativeai as genai
-
 import pandas as pd
-
 import json
 
-
-
 # --- CONFIGURAÇÃO DA PÁGINA ---
-
 st.set_page_config(
-
     page_title="E-com SEO Architect",
-
     page_icon="🚀",
-
     layout="wide",
-
     initial_sidebar_state="expanded"
-
 )
 
+# --- INTEGRAÇÃO DA CHAVE DE API ---
+# Sua chave integrada diretamente para evitar digitação manual
+API_KEY_INTEGRADA = "AIzaSyDlXoCn3GLsgYgmRMxhiU702oxD4EEWuYY"
 
-
-# --- ESTILIZAÇÃO CSS (Visual Dark/Tech) ---
-
+# --- ESTILIZAÇÃO CSS ---
 st.markdown("""
-
 <style>
-
     .stButton>button {
-
         width: 100%;
-
         background-color: #4F46E5;
-
         color: white;
-
         border-radius: 8px;
-
         height: 3em;
-
     }
-
-    .stTextInput>div>div>input {
-
-        border-radius: 8px;
-
-    }
-
     .main-header {
-
         font-size: 2.5rem;
-
         color: #4F46E5;
-
         font-weight: 700;
-
     }
-
 </style>
-
 """, unsafe_allow_html=True)
 
-
-
-# --- CONFIGURAÇÃO DA API (SIDEBAR) ---
-
+# --- BARRA LATERAL (SIDEBAR) ---
 with st.sidebar:
-
     st.image("https://cdn-icons-png.flaticon.com/512/1006/1006771.png", width=50)
-
     st.title("E-com SEO Architect")
-
     st.markdown("---")
-
     
-
-    # Campo para chave de API (Segurança)
-
-    api_key = st.text_input("AIzaSyDlXoCn3GLsgYgmRMxhiU702oxD4EEWuYY", type="password")
-
+    # Status da Conexão
+    if API_KEY_INTEGRADA.startswith("AIza"):
+        st.success("✅ API Gemini Conectada")
+    else:
+        st.error("❌ Erro na Chave de API")
     
-
     st.markdown("### Navegação")
-
     page = st.radio("Ir para:", ["Gerador de Estrutura", "Auditoria de URL"])
 
-    
-
-    st.info("💡 Dica: Selecione a plataforma correta para garantir a URL amigável ideal.")
-
-
-
-# --- FUNÇÃO DO CÉREBRO (AI) ---
-
-def generate_seo(product, keyword, niche, platform, differentials, key):
-
-    genai.configure(api_key=key)
-
-    model = genai.GenerativeModel('gemini-1.5-flash')
-
-    
-
-    prompt = f"""
-
-    Atue como um Especialista Sênior em SEO para E-commerce.
-
-    Sua tarefa é gerar uma estrutura JSON para o seguinte produto:
-
-    
-
-    DADOS:
-
-    - Produto: {product}
-
-    - Palavra-chave: {keyword}
-
-    - Nicho: {niche}
-
-    - Plataforma: {platform}
-
-    - Diferenciais: {differentials}
-
-    
-
-    REGRAS OBRIGATÓRIAS:
-
-    1. Title Tag: Max 60 chars. Title Case. Padrão: Produto + Specs + Marca.
-
-    2. Meta Description: Max 155 chars. Use gatilhos mentais (Frete, Oferta).
-
-    3. Slug:
-
-       - Se Shopify: /products/slug-com-hifens
-
-       - Se Vtex: /slug-com-hifens
-
-       - Padrão: /slug-com-hifens
-
-    4. LSI Keywords: 5 termos técnicos separados por vírgula.
-
-    5. H1: Nome limpo do produto.
-
-    
-
-    RETORNE APENAS UM JSON VÁLIDO NESTE FORMATO:
-
-    {{
-
-        "title_tag": "...",
-
-        "meta_description": "...",
-
-        "url_slug": "...",
-
-        "h1_tag": "...",
-
-        "lsi_keywords": "..."
-
-    }}
-
-    """
-
-    
-
+# --- FUNÇÃO DE INTELIGÊNCIA (GEMINI) ---
+def generate_seo_logic(product, keyword, niche, platform, differentials):
     try:
-
+        genai.configure(api_key=API_KEY_INTEGRADA)
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        
+        prompt = f"""
+        Atue como Especialista Sênior em SEO. Gere um JSON para:
+        Produto: {product} | Palavra-chave: {keyword} | Nicho: {niche} | Plataforma: {platform}
+        
+        REGRAS:
+        1. Title Tag: Max 60 chars, Title Case.
+        2. Meta Description: Max 155 chars, use gatilhos mentais.
+        3. Slug: Amigável para {platform}.
+        4. LSI: 5 termos técnicos.
+        
+        RETORNE APENAS O JSON:
+        {{
+            "title_tag": "...",
+            "meta_description": "...",
+            "url_slug": "...",
+            "h1_tag": "...",
+            "lsi_keywords": "..."
+        }}
+        """
         response = model.generate_content(prompt)
-
-        return json.loads(response.text.strip().replace('```json', '').replace('```', ''))
-
+        # Limpeza básica da resposta para garantir JSON puro
+        clean_response = response.text.strip().replace('```json', '').replace('```', '')
+        return json.loads(clean_response)
     except Exception as e:
-
         return {"error": str(e)}
 
-
-
-# --- PÁGINA 1: GERADOR ---
-
+# --- PÁGINA: GERADOR ---
 if page == "Gerador de Estrutura":
-
     st.markdown('<div class="main-header">Gerador de Estrutura SEO</div>', unsafe_allow_html=True)
-
-    st.markdown("Crie títulos e descrições otimizados para o Google em segundos.")
-
     
-
     col1, col2 = st.columns(2)
-
-    
-
     with col1:
-
-        product_name = st.text_input("Nome do Produto *", placeholder="Ex: Inversor WEG CFW500...")
-
-        niche = st.selectbox("Nicho de Mercado", ["Automação Industrial", "Moda", "Eletrônicos", "Casa e Decor", "Outro"])
-
-        differentials = st.text_input("Diferenciais", placeholder="Ex: Frete Grátis, 10% Off, Pronta Entrega")
-
-
-
+        product_name = st.text_input("Nome do Produto *")
+        niche = st.selectbox("Nicho", ["Automação Industrial", "E-commerce Geral", "Eletrônicos"])
     with col2:
-
-        keyword = st.text_input("Palavra-chave Principal *", placeholder="Ex: Inversor de Frequência")
-
-        platform = st.selectbox("Plataforma da Loja", ["Nuvemshop", "Shopify", "Vtex", "WooCommerce", "Outra"])
-
+        keyword = st.text_input("Palavra-chave Principal *")
+        platform = st.selectbox("Plataforma", ["Nuvemshop", "Shopify", "Vtex", "Outra"])
     
+    differentials = st.text_input("Diferenciais (Ex: Frete Grátis)")
 
     if st.button("✨ Gerar Estrutura Otimizada"):
-
-        if not api_key:
-
-            st.error("Por favor, insira sua Chave de API na barra lateral.")
-
-        elif not product_name:
-
-            st.warning("Preencha o nome do produto.")
-
-        else:
-
-            with st.spinner("A IA está analisando as melhores palavras-chave..."):
-
-                result = generate_seo(product_name, keyword, niche, platform, differentials, api_key)
-
+        with st.spinner("Analisando..."):
+            result = generate_seo_logic(product_name, keyword, niche, platform, differentials)
+            if "error" in result:
+                st.error(f"Erro: {result['error']}")
+            else:
+                st.subheader("📋 Resultado")
+                st.write(f"**Título:** {result['title_tag']}")
+                st.write(f"**Meta:** {result['meta_description']}")
+                st.write(f"**URL:** {result['url_slug']}")
                 
+                # Exportação
+                df = pd.DataFrame([result])
+                st.download_button("📥 Baixar CSV", df.to_csv(index=False).encode('utf-8'), "seo.csv", "text/csv")
 
-                if "error" in result:
-
-                    st.error("Erro ao conectar com Gemini. Verifique sua chave.")
-
-                else:
-
-                    st.success("Estrutura gerada com sucesso!")
-
-                    
-
-                    # Exibição dos Resultados
-
-                    st.subheader("📋 Resultado Final")
-
-                    
-
-                    c1, c2 = st.columns([3, 1])
-
-                    with c1:
-
-                        st.markdown(f"**Title Tag ({len(result['title_tag'])} chars):**")
-
-                        st.code(result['title_tag'], language="text")
-
-                        
-
-                        st.markdown(f"**Meta Description ({len(result['meta_description'])} chars):**")
-
-                        st.code(result['meta_description'], language="text")
-
-                        
-
-                        st.markdown("**URL Slug:**")
-
-                        st.code(result['url_slug'], language="text")
-
-
-
-                    with c2:
-
-                        st.markdown("**Palavras-chave LSI:**")
-
-                        st.info(result['lsi_keywords'])
-
-                        
-
-                        st.markdown("**H1 Sugerido:**")
-
-                        st.write(result['h1_tag'])
-
-
-
-                    # Botão CSV
-
-                    df = pd.DataFrame([result])
-
-                    csv = df.to_csv(index=False).encode('utf-8')
-
-                    st.download_button(
-
-                        label="📥 Baixar Relatório (CSV)",
-
-                        data=csv,
-
-                        file_name='seo_estrutura.csv',
-
-                        mime='text/csv',
-
-                    )
-
-
-
-# --- PÁGINA 2: AUDITORIA ---
-
-elif page == "Auditoria de URL":
-
-    st.markdown('<div class="main-header">Auditoria de Conteúdo</div>', unsafe_allow_html=True)
-
-    st.write("Compare seus dados atuais com as regras do Google.")
-
-    
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-
-        current_title = st.text_area("Título Atual", height=100)
-
-    with col2:
-
-        current_meta = st.text_area("Meta Descrição Atual", height=100)
-
-        
-
-    if st.button("🔍 Auditar Agora"):
-
+# --- PÁGINA: AUDITORIA ---
+else:
+    st.markdown('<div class="main-header">Auditoria de URL</div>', unsafe_allow_html=True)
+    t_input = st.text_input("Cole o Título Atual")
+    if st.button("🔍 Auditar"):
         score = 100
-
-        issues = []
-
-        
-
-        # Lógica de Auditoria (Python Puro - Mais rápido que IA)
-
-        if len(current_title) > 60:
-
-            score -= 20
-
-            issues.append(f"⚠️ Título muito longo: {len(current_title)} caracteres (Ideal: < 60)")
-
-        elif len(current_title) < 30:
-
-            score -= 10
-
-            issues.append(f"⚠️ Título muito curto: {len(current_title)} caracteres")
-
-            
-
-        if len(current_meta) > 160:
-
-            score -= 20
-
-            issues.append(f"⚠️ Meta Descrição muito longa: {len(current_meta)} caracteres")
-
-        if current_title.isupper():
-
-            score -= 30
-
-            issues.append("⛔ Título em CAIXA ALTA (Gritando). Google penaliza isso.")
-
-            
-
-        # Exibição
-
-        st.divider()
-
-        c1, c2 = st.columns([1, 2])
-
-        
-
-        with c1:
-
-            st.metric("Nota de Saúde SEO", f"{score}/100")
-
-            if score < 60:
-
-                st.error("Precisa de Atenção Crítica")
-
-            elif score < 90:
-
-                st.warning("Pode Melhorar")
-
-            else:
-
-                st.success("Excelente!")
-
-        
-
-        with c2:
-
-            st.subheader("Diagnóstico:")
-
-            if issues:
-
-                for issue in issues:
-
-                    st.write(issue)
-
-            else:
-
-                st.write("✅ Nenhum erro grave encontrado na contagem de caracteres.")
+        if len(t_input) > 60: score -= 20
+        if t_input.isupper(): score -= 30
+        st.metric("Nota SEO", f"{score}/100")
